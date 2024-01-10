@@ -217,11 +217,13 @@ app.get(
             unitPrice: li.unitPrice,
           })
         ),
-        deposits: invoiceDetails.invoice.deposits.map((deposit) => ({
-          id: deposit.id,
-          amount: deposit.amount,
-          depositDateFormatted: deposit.depositDate.toLocaleDateString(),
-        })),
+        deposits: invoiceDetails.invoice.deposits.map(
+          (deposit: { id: string; amount: number; depositDate: Date }) => ({
+            id: deposit.id,
+            amount: deposit.amount,
+            depositDateFormatted: deposit.depositDate.toLocaleDateString(),
+          })
+        ),
       });
     } catch (error) {
       res.status(500).send(error);
