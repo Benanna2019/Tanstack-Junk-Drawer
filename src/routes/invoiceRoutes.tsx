@@ -17,7 +17,6 @@ import { salesRoute } from "./salesRoutes";
 import {
   fetchInvoiceById,
   fetchInvoicesAndCustomers,
-  invoicesQueryOptions,
 } from "../fetchers/invoices";
 import { Customer } from "@/types";
 import { currencyFormatter } from "../../utils";
@@ -30,9 +29,9 @@ import { ErrorBoundaryComponent } from "@/components/error-boundary";
 import { LineItems } from "@/components/forms/create-invoice";
 import { useRef } from "react";
 import { fetchCustomers } from "@/fetchers/customers";
-import { useMutation, useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createInvoice } from "@/actions";
-import { InvoiceDetailsFallback, SpinnerIcon } from "@/components";
+import { SpinnerIcon } from "@/components";
 
 export const invoicesRoute = new Route({
   getParentRoute: () => salesRoute,
@@ -44,7 +43,6 @@ export const invoicesRoute = new Route({
       customers,
     } = invoicesRoute.useLoaderData();
 
-    console.log("customers", customers);
     const hundo = dueSoonAmount + overdueAmount;
     const dueSoonPercent = Math.floor((dueSoonAmount / hundo) * 100);
     return (
@@ -97,8 +95,6 @@ export const invoiceIdRoute = new Route({
     }
 
     const data = invoiceData?.data;
-
-    console.log("data", data);
 
     if (data) {
       return (
@@ -176,9 +172,7 @@ export const newInvoiceRoute = new Route({
       event.preventDefault();
       event.stopPropagation();
       const formData = new FormData(event.target as HTMLFormElement);
-      console.log("form data from handle submit", formData);
       const res = await mutateAsync(formData);
-      console.log("res", res);
       router.invalidate();
       navigate({
         to: "/sales/invoices/$invoiceId",

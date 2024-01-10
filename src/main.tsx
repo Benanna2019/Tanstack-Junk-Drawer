@@ -1,10 +1,5 @@
 import ReactDOM from "react-dom/client";
-import {
-  ClerkProvider,
-  useAuth,
-  useUser,
-  useSession,
-} from "@clerk/clerk-react";
+import { ClerkProvider, useUser, useSession } from "@clerk/clerk-react";
 import "./index.css";
 import { RouterProvider } from "@tanstack/react-router";
 import { router } from "./routes";

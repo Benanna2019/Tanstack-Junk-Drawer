@@ -1,6 +1,5 @@
 import { Router } from "@tanstack/react-router";
 import { indexRoute, rootRoute } from "./rootRoute";
-import { postsRoute, postRoute, postsIndexRoute } from "./postRoutes";
 import {
   depositIdRoute,
   depositsRoute,
@@ -21,7 +20,6 @@ import {
 import { QueryClient } from "@tanstack/react-query";
 
 const routeTree = rootRoute.addChildren([
-  postsRoute.addChildren([postRoute, postsIndexRoute]),
   salesRoute.addChildren([
     invoicesRoute.addChildren([invoiceIdRoute, newInvoiceRoute]),
     customersRoute.addChildren([customerIdRoute, newCustomerRoute]),

@@ -170,7 +170,7 @@ export const createDeposit = async (formData: FormData) => {
   }
 };
 
-const deleteDeposit = async (formData: FormData) => {
+export const deleteDeposit = async (formData: FormData) => {
   const depositId = formData.get("depositId");
   invariant(typeof depositId === "string", "params.depositId is not available");
 
@@ -178,7 +178,7 @@ const deleteDeposit = async (formData: FormData) => {
   invariant(typeof intent === "string", "intent must be a string");
   switch (intent) {
     case "delete": {
-      const response = await axios.post(
+      const response = await axios.post<{ message: "ok" }>(
         "http://localhost:8080/delete-deposit",
         {
           data: { depositId },

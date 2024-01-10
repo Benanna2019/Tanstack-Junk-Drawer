@@ -1,5 +1,5 @@
-import { Customer, CustomerIdFetcherType, SearchCustomerType } from "@/types";
-import { defer, type DeferredPromise } from "@tanstack/react-router";
+import { Customer, CustomerIdFetcherType } from "@/types";
+import { defer } from "@tanstack/react-router";
 import axios from "axios";
 
 export const fetchCustomers = async () => {
@@ -23,8 +23,4 @@ export const fetchCustomerById = async (customerId: string) => {
     )
     .then((r) => r.data);
   return { customerDetails: defer(customerDetailsData), customerInfo };
-};
-
-type DeferredCustomer = {
-  data: DeferredPromise<CustomerIdFetcherType["customerDetails"]>;
 };

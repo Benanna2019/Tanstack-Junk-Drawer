@@ -6,20 +6,16 @@ import {
   useNavigate,
   useParams,
   Route,
+  ErrorComponent,
 } from "@tanstack/react-router";
-import { postRoute } from "./postRoutes";
 import { rootRoute } from "./rootRoute";
 import { fetchFirstData } from "../fetchers/sales";
 import { equals } from "remeda";
 import { fetchDeposit } from "@/fetchers/deposits";
 import { TrashIcon } from "@/components";
-
-type LoaderData = {
-  data: {
-    firstInvoiceId: string;
-    firstCustomerId: string;
-  };
-};
+import { deleteDeposit } from "@/actions";
+import { useMutation } from "@tanstack/react-query";
+import { queryClient } from ".";
 
 export const salesRoute = new Route({
   getParentRoute: () => rootRoute,
@@ -27,23 +23,22 @@ export const salesRoute = new Route({
   loader: fetchFirstData,
   beforeLoad: ({ context: { authentication } }) => {
     const isSignedIn = authentication?.isSignedIn;
-    console.log("isSignedIn", isSignedIn);
     if (!isSignedIn) {
       throw Error("you must be signed in to view sales data");
     }
     // you could add sentry error logging here
   },
   errorComponent: ({ error }) => {
-    //@ts-ignore
-    return <div className="text-red-500">{error.message as string}</div>;
+    return <ErrorComponent error={error} />;
   },
   component: () => {
-    // const { data } = salesRoute.useLoadeData<LoaderData>();
     const matches = useMatches();
     const indexMatches = matches.some((m) => equals(m.pathname, "/sales"));
-    const invoiceMatches = matches.some((m) => equals(m.pathname, "/invoices"));
+    const invoiceMatches = matches.some((m) =>
+      equals(m.pathname, "/sales/invoices")
+    );
     const customerMatches = matches.some((m) =>
-      equals(m.pathname, "/customers")
+      equals(m.pathname, "/sales/customers")
     );
 
     return (
@@ -119,14 +114,20 @@ export const depositIdRoute = new Route({
   component: () => {
     const { depositDetails } = depositIdRoute.useLoaderData();
     const { depositId } = useParams({ strict: false });
+    const { invoiceId } = depositDetails;
 
     const router = useRouter();
 
-    // REPLACE THE BELOW WITH A USEMUTATION HOOK
-
-    // const [{ latestSubmission }, submitDeleteDeposit] = useAction({
-    //   key: "deleteDeposit",
-    // });
+    const { mutateAsync } = useMutation({
+      mutationFn: (data: FormData) => {
+        return deleteDeposit(data);
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: ["invoices", depositDetails.invoiceId],
+        });
+      },
+    });
 
     const navigate = useNavigate({
       from: router.state.location.pathname as any,
@@ -137,14 +138,13 @@ export const depositIdRoute = new Route({
       event.stopPropagation();
       const formData = new FormData(event.target as HTMLFormElement);
 
-      // await submitDeleteDeposit({
-      //   variables: formData,
-      // });
-
-      navigate({
-        to: "/sales/invoices/$invoiceId",
-        params: { invoiceId: depositDetails.invoiceId },
-      });
+      const res = await mutateAsync(formData);
+      if (res?.statusText === "OK") {
+        navigate({
+          to: "/sales/invoices/$invoiceId",
+          params: { invoiceId: invoiceId },
+        });
+      }
     };
 
     return (

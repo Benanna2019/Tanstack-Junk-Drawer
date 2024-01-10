@@ -32,25 +32,9 @@ app.use(express.urlencoded({ extended: true }));
 
 const port = 8080;
 
-app.get("/", (req: Express.Request, res: Express.Response, next) => {
-  res.json({ message: "Hello World!" });
-  next();
-});
-
-// user-info route
-// app.get("/user-info", async (req: Express.Request, res: Express.Response, next) => {
-//   const userId = req.query.userId as string;
-//   const user = await prisma.user.findFirst({
-//     where: { id: userId },
-//     select: { id: true, email: true },
-
-// update user logo (this will use uploadThing's { utapi } package to upload to S3)
-
-// get customers route
-
 app.get(
   "/customers",
-  async (req: Express.Request, res: Express.Response, next) => {
+  async (_req: Express.Request, res: Express.Response, next) => {
     try {
       const customers = await getCustomerListItems();
       res.status(200).send(customers);
@@ -75,6 +59,11 @@ app.post(
     }
   }
 );
+
+// TODO:
+// if someone wants to try to add this in feel free.
+// Not sure how to take Remix's useFetcher idea of posting to the search params of a route you are on that would then update the
+// loader on that page with the new search params.
 
 // app.get("/search-customers", async (req, res) => {});
 
@@ -263,7 +252,7 @@ app.get(
         throw new Response("not found", { status: 404 });
       }
 
-      res.status(200).json({ depositDetails });
+      res.status(200).json(depositDetails);
     } catch (error) {
       res.status(500).send(error);
     }
