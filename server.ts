@@ -12,6 +12,7 @@ import {
 } from "./models/customerserver";
 import "dotenv/config";
 import {
+  DueStatus,
   createInvoice,
   getFirstInvoice,
   getInvoiceDetails,
@@ -81,7 +82,7 @@ app.post(
 
 app.get(
   "/first-data-info",
-  async (req: Express.Request, res: Express.Response, next) => {
+  async (_req: Express.Request, res: Express.Response) => {
     try {
       const [firstInvoice, firstCustomer] = await Promise.all([
         getFirstInvoice(),
@@ -102,8 +103,7 @@ app.get(
 
 app.get(
   "/customers/:customerId",
-  // ClerkExpressRequireAuth(),
-  async (req: Express.Request, res: Express.Response, next) => {
+  async (req: Express.Request, res: Express.Response) => {
     try {
       const { customerId } = req.params;
       invariant(
@@ -128,20 +128,15 @@ app.get(
 
 app.get(
   "/customerDetails/:customerId",
-  // ClerkExpressRequireAuth(),
-  async (req: Express.Request, res: Express.Response, next) => {
+  async (req: Express.Request, res: Express.Response) => {
     try {
       const { customerId } = req.params;
-      // console.log("income customer id", customerId);
       invariant(
         typeof customerId === "string",
         "params.customerId is not available"
       );
 
       const customerDetails = await getCustomerDetails(customerId);
-      // console.log("customer details", customerDetails);
-
-      // const data = { customerDetails };
 
       res.status(200).json({ data: customerDetails });
     } catch (error) {
@@ -164,36 +159,39 @@ app.get("/search-customers", async (req, res) => {
 
 // get invoices route
 
-app.get(
-  "/invoices",
-  async (req: Express.Request, res: Express.Response, next) => {
-    try {
-      const invoiceListItems = await getInvoiceListItems();
-      const dueSoonAmount = invoiceListItems.reduce((sum, li) => {
+app.get("/invoices", async (_req: Express.Request, res: Express.Response) => {
+  try {
+    const invoiceListItems = await getInvoiceListItems();
+    const dueSoonAmount = invoiceListItems.reduce(
+      (sum: number, li: LineItem) => {
         if (li.dueStatus !== "due") {
           return sum;
         }
         const remainingBalance = li.totalAmount - li.totalDeposits;
         return sum + remainingBalance;
-      }, 0);
-      const overdueAmount = invoiceListItems.reduce((sum, li) => {
+      },
+      0
+    );
+    const overdueAmount = invoiceListItems.reduce(
+      (sum: number, li: LineItem) => {
         if (li.dueStatus !== "overdue") {
           return sum;
         }
         const remainingBalance = li.totalAmount - li.totalDeposits;
         return sum + remainingBalance;
-      }, 0);
-      res.status(200).json({ invoiceListItems, dueSoonAmount, overdueAmount });
-    } catch (error) {
-      res.status(500).send(error);
-    }
+      },
+      0
+    );
+    res.status(200).json({ invoiceListItems, dueSoonAmount, overdueAmount });
+  } catch (error) {
+    res.status(500).send(error);
   }
-);
+});
 
 // get invoice by id route
 app.get(
   "/invoices/:invoiceId",
-  async (req: Express.Request, res: Express.Response, next) => {
+  async (req: Express.Request, res: Express.Response) => {
     try {
       const { invoiceId } = req.params;
       if (typeof invoiceId !== "string") {
@@ -211,12 +209,14 @@ app.get(
         dueDisplay: invoiceDetails.dueStatusDisplay,
         invoiceDateDisplay:
           invoiceDetails.invoice.invoiceDate.toLocaleDateString(),
-        lineItems: invoiceDetails.invoice.lineItems.map((li) => ({
-          id: li.id,
-          description: li.description,
-          quantity: li.quantity,
-          unitPrice: li.unitPrice,
-        })),
+        lineItems: invoiceDetails.invoice.lineItems.map(
+          (li: InvoiceLineItem) => ({
+            id: li.id,
+            description: li.description,
+            quantity: li.quantity,
+            unitPrice: li.unitPrice,
+          })
+        ),
         deposits: invoiceDetails.invoice.deposits.map((deposit) => ({
           id: deposit.id,
           amount: deposit.amount,
@@ -231,22 +231,25 @@ app.get(
 
 // add invoice route
 
-app.post("/add-invoice", async (req: any, res: any, next) => {
-  try {
-    const data = req.body.data;
-    const invoice = await createInvoice(data);
-    res.status(200).send(invoice);
-  } catch (error) {
-    console.log("error", error);
-    res.status(500).send(error);
+app.post(
+  "/add-invoice",
+  async (req: Express.Request, res: Express.Response) => {
+    try {
+      const data = req.body.data;
+      const invoice = await createInvoice(data);
+      res.status(200).send(invoice);
+    } catch (error) {
+      console.log("error", error);
+      res.status(500).send(error);
+    }
   }
-});
+);
 
 // get deposit by id route
 
 app.get(
   "/deposits/:depositId",
-  async (req: Express.Request, res: Express.Response, next) => {
+  async (req: Express.Request, res: Express.Response) => {
     try {
       const { depositId } = req.params;
       invariant(
@@ -269,7 +272,7 @@ app.get(
 
 app.post(
   "/add-deposit",
-  async (req: Express.Request, res: Express.Response, next) => {
+  async (req: Express.Request, res: Express.Response) => {
     try {
       const data = await req.body.data;
       const { invoiceId, amount, note, depositDate } = data;
@@ -287,7 +290,7 @@ app.post(
 
 app.post(
   "/delete-deposit",
-  async (req: Express.Request, res: Express.Response, next) => {
+  async (req: Express.Request, res: Express.Response) => {
     try {
       const data = await req.body.data;
 
@@ -304,3 +307,21 @@ app.listen(port, () => {
 });
 
 export const viteNodeApp = app;
+
+type LineItem = {
+  totalAmount: number;
+  totalDeposits: number;
+  daysToDueDate: number;
+  dueStatus: DueStatus;
+  dueStatusDisplay: string;
+  id: string;
+  name: string;
+  number: number;
+};
+
+type InvoiceLineItem = {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+};
