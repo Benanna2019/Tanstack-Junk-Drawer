@@ -20,7 +20,6 @@ import {
 } from "../ui/dialog";
 // import { addInvoice } from "@/app/actions";
 import { ErrorBoundaryComponent } from "../error-boundary";
-import { useAction } from "@tanstack/react-actions";
 
 const generateRandomId = () => Math.random().toString(32).slice(2);
 
@@ -45,9 +44,12 @@ export default function CreateInvoiceForm({
 }) {
   const [open, setOpen] = useState<boolean>(false);
   const invoiceFormRef = useRef<any>();
-  const [{ latestSubmission }, submitCreateInvoice] = useAction({
-    key: "createInvoice",
-  });
+
+  //TODO: Replace the action code below with useMutation hook
+
+  // const [{ latestSubmission }, submitCreateInvoice] = useAction({
+  //   key: "createInvoice",
+  // });
 
   const router = useRouter();
 
@@ -58,18 +60,18 @@ export default function CreateInvoiceForm({
     event.stopPropagation();
     const formData = new FormData(event.target as HTMLFormElement);
 
-    const response = await submitCreateInvoice({
-      variables: formData,
-    });
+    // const response = await submitCreateInvoice({
+    //   variables: formData,
+    // });
 
-    if (response?.statusText === "OK") {
-      setOpen(false);
-    }
+    // if (response?.statusText === "OK") {
+    //   setOpen(false);
+    // }
 
-    navigate({
-      to: "/sales/invoices/$invoiceId",
-      params: { invoiceId: response?.data?.id },
-    });
+    // navigate({
+    //   to: "/sales/invoices/$invoiceId",
+    //   params: { invoiceId: response?.data?.id },
+    // });
   };
 
   return (

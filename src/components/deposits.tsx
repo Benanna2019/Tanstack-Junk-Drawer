@@ -2,44 +2,63 @@ import { useRef } from "react";
 import { currencyFormatter } from "../../utils";
 import { LabelText, inputClasses, submitButtonClasses } from "./label-text";
 import { Link, useRouter } from "@tanstack/react-router";
-import { useAction } from "@tanstack/react-actions";
+import { useMutation } from "@tanstack/react-query";
+import { createDeposit } from "@/actions";
+import { queryClient } from "@/routes";
+import { parseDate } from "../../utils/index";
+import invariant from "tiny-invariant";
+
+interface DepositData {
+  deposits: {
+    id: string;
+    amount: number;
+    depositDateFormatted: string;
+  }[];
+}
 
 export const lineItemClassName =
   "flex justify-between border-t border-gray-100 py-4 text-[14px] leading-[24px]";
 
 export function Deposits({
-  deposits,
+  data,
   invoiceId,
 }: {
-  deposits: any[];
+  data: DepositData;
   invoiceId: string;
 }) {
   const formRef = useRef<DepositFormElement>(null);
 
   // use reacts experimental_useOptimistic hook like in the next app to update the UI before the server responds
 
-  // pass in the deposits as a prop
+  const router = useRouter();
 
-  const [{ latestSubmission }, submitCreateCustomer] = useAction({
-    key: "createDeposit",
+  const { mutateAsync, variables } = useMutation({
+    mutationFn: (data: FormData) => {
+      return createDeposit(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invoices", invoiceId] });
+      formRef.current?.reset();
+      router.invalidate();
+    },
   });
-  // const router = useRouter();
+
+  console.log("variables", variables);
 
   const handleSubmit = async (event: any) => {
     event.preventDefault();
     event.stopPropagation();
     const formData = new FormData(event.target as HTMLFormElement);
-
-    await submitCreateCustomer({
-      variables: formData,
-    });
+    const res = await mutateAsync(formData);
+    console.log("res", res);
+    router.invalidate();
   };
 
   return (
     <div>
       <div className="font-bold leading-8">Deposits</div>
-      {deposits.length > 0 ? (
-        deposits.map((deposit) => (
+      {data.deposits.length > 0 ? (
+        data.deposits.map((deposit) => (
           <div key={deposit.id} className={lineItemClassName}>
             <Link
               to="/sales/deposits/$depositId"

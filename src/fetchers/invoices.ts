@@ -1,5 +1,7 @@
 import { Customer } from "@/types";
 import axios from "axios";
+import type { Invoice, InvoiceDetails } from "../../models/invoiceserver";
+import { queryOptions } from "@tanstack/react-query";
 
 export const fetchInvoicesAndCustomers = async () => {
   console.log("Fetching invoices...");
@@ -16,10 +18,25 @@ export const fetchInvoicesAndCustomers = async () => {
 export const fetchInvoiceById = async (invoiceId: string) => {
   console.log(`Fetching invoice by id ${invoiceId}...`);
   await new Promise((r) => setTimeout(r, 500));
-  return await axios
-    .get<any>(`http://localhost:8080/invoices/${invoiceId}`)
+  const invoice = await axios
+    .get<InvoiceDetails>(`http://localhost:8080/invoices/${invoiceId}`)
     .then((r) => r.data);
+  return {
+    data: invoice,
+  };
 };
+
+export const invoicesQueryOptions = () =>
+  queryOptions({
+    queryKey: ["invoices"],
+    queryFn: () => fetchInvoicesAndCustomers(),
+  });
+
+export const invoiceByIdQueryOptions = (invoiceId: string) =>
+  queryOptions({
+    queryKey: ["invoices", invoiceId],
+    queryFn: () => fetchInvoiceById(invoiceId),
+  });
 
 export type InvoicesType = {
   overdueAmount: number;

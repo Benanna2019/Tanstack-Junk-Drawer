@@ -2,6 +2,8 @@ import type { Customer } from "@prisma/client";
 import { prisma } from "../db";
 import { getInvoiceDerivedData } from "./invoiceserver";
 
+export type { Customer };
+
 export async function searchCustomers(query: string) {
   const customers = await prisma.customer.findMany({
     select: {

@@ -1,45 +1,23 @@
-import { loaderClient } from "@/loaders";
 import SideBar from "../components/sidebar";
-import { Route, RouterContext } from "@tanstack/react-router";
+import { Route, rootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
-import { actionClient } from "@/actions";
-import { fetchInvoicesAndCustomers } from "@/fetchers/invoices";
-import { createLoaderOptions } from "@tanstack/loaders";
-import { useLoaderInstance } from "@tanstack/react-loaders";
+import { QueryClient } from "@tanstack/react-query";
+import { UserResource, ActiveSessionResource } from "@clerk/types";
 
-export const routerContext = new RouterContext<{
-  loaderClient: typeof loaderClient;
-  actionClient: typeof actionClient;
-}>();
-
-export const rootRoute = routerContext.createRootRoute({
-  beforeLoad: () => {
-    const loaderOptions = createLoaderOptions({
-      key: "invoices",
-    });
-
-    return { loaderOptions };
-  },
-  loader: async ({
-    preload,
-    context: { loaderClient },
-    routeContext: { loaderOptions },
-  }) => {
-    await loaderClient.load({
-      ...loaderOptions,
-      preload,
-    });
-  },
-  component: ({ useLoader, useRouteContext }) => {
-    const { loaderOptions } = useRouteContext();
-    const {
-      data: {
-        invoices: { invoiceListItems },
-      },
-    } = useLoaderInstance(loaderOptions);
+export const rootRoute = rootRouteWithContext<{
+  queryClient: QueryClient;
+  authentication:
+    | {
+        user: UserResource | null | undefined;
+        isSignedIn: boolean | undefined | null;
+        session: ActiveSessionResource | null | undefined;
+      }
+    | undefined;
+}>()({
+  component: () => {
     return (
       <>
-        <SideBar invoiceListItems={invoiceListItems} />
+        <SideBar />
         {/* Start rendering router matches */}
         <TanStackRouterDevtools position="bottom-right" />
       </>

@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 
 .env
+
+bun.lockb
+
+prisma/dev.db

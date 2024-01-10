@@ -65,6 +65,7 @@ app.post(
   async (req: Express.Request, res: Express.Response, next) => {
     try {
       const data = req.body.data;
+      console.log("data", data);
       const customer = await createCustomer(data);
 
       res.status(200).send(customer);
@@ -113,12 +114,36 @@ app.get(
       if (!customerInfo) {
         throw new Response("not found", { status: 404 });
       }
-      const customerDetails = await getCustomerDetails(customerId);
+      const customerDetails = getCustomerDetails(customerId);
       const customers = await getCustomerListItems();
 
       const data = { customers, customerInfo, customerDetails };
 
       res.status(200).json(data);
+    } catch (error) {
+      res.status(500).send(error);
+    }
+  }
+);
+
+app.get(
+  "/customerDetails/:customerId",
+  // ClerkExpressRequireAuth(),
+  async (req: Express.Request, res: Express.Response, next) => {
+    try {
+      const { customerId } = req.params;
+      // console.log("income customer id", customerId);
+      invariant(
+        typeof customerId === "string",
+        "params.customerId is not available"
+      );
+
+      const customerDetails = await getCustomerDetails(customerId);
+      // console.log("customer details", customerDetails);
+
+      // const data = { customerDetails };
+
+      res.status(200).json({ data: customerDetails });
     } catch (error) {
       res.status(500).send(error);
     }

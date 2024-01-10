@@ -1,16 +1,14 @@
 import { fetchPosts, fetchPost } from "../fetchers/posts";
 import { NotFoundError } from "../types";
-import { Link, Outlet, ErrorComponent } from "@tanstack/react-router";
-import { Route } from "@tanstack/router-core";
+import { Link, Outlet, ErrorComponent, Route } from "@tanstack/react-router";
 import { rootRoute } from "./rootRoute";
 
 export const postsRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "posts",
-  key: false,
   loader: fetchPosts,
-  component: ({ useLoader }) => {
-    const posts = useLoader();
+  component: () => {
+    const posts = postsRoute.useLoaderData();
 
     return (
       <div className="p-2 flex gap-2">

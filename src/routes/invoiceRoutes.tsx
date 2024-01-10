@@ -6,50 +6,45 @@ import {
   submitButtonClasses,
 } from "../components/label-text";
 import {
-  ErrorComponent,
   Link,
   Outlet,
   useNavigate,
   useParams,
   useRouter,
+  Route,
 } from "@tanstack/react-router";
-import { Route } from "@tanstack/router-core";
 import { salesRoute } from "./salesRoutes";
 import {
+  fetchInvoiceById,
   fetchInvoicesAndCustomers,
-  type InvoicesType,
+  invoicesQueryOptions,
 } from "../fetchers/invoices";
-import { Customer, NotFoundError, customerQuerySchema } from "@/types";
+import { Customer } from "@/types";
 import { currencyFormatter } from "../../utils";
 import {
   Deposits,
   LineItemDisplay,
   lineItemClassName,
 } from "@/components/deposits";
-import {
-  createLoaderOptions,
-  useLoaderInstance,
-} from "@tanstack/react-loaders";
 import { ErrorBoundaryComponent } from "@/components/error-boundary";
 import { LineItems } from "@/components/forms/create-invoice";
-import { useAction } from "@tanstack/react-actions";
 import { useRef } from "react";
 import { fetchCustomers } from "@/fetchers/customers";
-
-type LoaderData = {
-  invoices: InvoicesType;
-  customers: Customer[];
-};
+import { useMutation, useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { createInvoice } from "@/actions";
+import { InvoiceDetailsFallback, SpinnerIcon } from "@/components";
 
 export const invoicesRoute = new Route({
   getParentRoute: () => salesRoute,
   path: "invoices",
   loader: fetchInvoicesAndCustomers,
-  component: ({ useLoader }) => {
+  component: () => {
     const {
       invoices: { invoiceListItems, dueSoonAmount, overdueAmount },
       customers,
-    } = useLoader<LoaderData>();
+    } = invoicesRoute.useLoaderData();
+
+    console.log("customers", customers);
     const hundo = dueSoonAmount + overdueAmount;
     const dueSoonPercent = Math.floor((dueSoonAmount / hundo) * 100);
     return (
@@ -79,77 +74,77 @@ export const invoicesRoute = new Route({
 export const invoiceIdRoute = new Route({
   getParentRoute: () => invoicesRoute,
   path: "$invoiceId",
-  beforeLoad: ({ params: { invoiceId } }) => {
-    const loaderOptions = createLoaderOptions({
-      key: "invoice",
-      variables: invoiceId,
+  component: () => {
+    const { invoiceId } = useParams({ strict: false });
+
+    const {
+      data: invoiceData,
+      isLoading,
+      error,
+    } = useQuery({
+      queryKey: ["invoices", invoiceId],
+      queryFn: () => {
+        return fetchInvoiceById(invoiceId);
+      },
     });
 
-    return { loaderOptions };
-  },
-  loader: async ({
-    preload,
-    context: { loaderClient },
-    routeContext: { loaderOptions },
-  }) => {
-    await loaderClient.load({
-      ...loaderOptions,
-      preload,
-    });
-  },
-  errorComponent: ({ error }) => {
-    if (error instanceof NotFoundError) {
-      return <div>{error.message}</div>;
+    if (isLoading) {
+      return <SpinnerIcon />;
     }
 
-    return <ErrorComponent error={error} />;
-  },
-  component: ({ useLoader, useRouteContext }) => {
-    const { loaderOptions } = useRouteContext();
-    const { data } = useLoaderInstance(loaderOptions);
-    const { invoiceId } = useParams({ strict: false });
-    return (
-      <div className="relative p-10">
-        {/* <Link
-              to={`../../customers/${data.customerId}`}
-              className="text-[length:14px] font-bold leading-6 text-blue-600 underline"
-            >
-              {data.customerName}
-            </Link> */}
-        <div className="text-[length:32px] font-bold leading-[40px]">
-          {currencyFormatter.format(data.totalAmount)}
-        </div>
-        <LabelText>
-          <span
-            className={
-              data.dueStatus === "paid"
-                ? "text-green-brand"
-                : data.dueStatus === "overdue"
-                ? "text-red-brand"
-                : ""
-            }
+    if (error) {
+      return <div>Error: {error.message}</div>;
+    }
+
+    const data = invoiceData?.data;
+
+    console.log("data", data);
+
+    if (data) {
+      return (
+        <div className="relative p-10">
+          <Link
+            to="/sales/customers/$customerId"
+            params={{ customerId: data.customerId }}
+            className="text-[length:14px] font-bold leading-6 text-blue-600 underline"
           >
-            {data.dueDisplay}
-          </span>
-          {` • Invoiced ${data.invoiceDateDisplay}`}
-        </LabelText>
-        <div className="h-4" />
-        {data.lineItems.map((item: any) => (
-          <LineItemDisplay
-            key={item.id}
-            description={item.description}
-            unitPrice={item.unitPrice}
-            quantity={item.quantity}
-          />
-        ))}
-        <div className={`${lineItemClassName} font-bold`}>
-          <div>Net Total</div>
-          <div>{currencyFormatter.format(data.totalAmount)}</div>
+            {data.customerName}
+          </Link>
+          <div className="text-[length:32px] font-bold leading-[40px]">
+            {currencyFormatter.format(data.totalAmount)}
+          </div>
+          <LabelText>
+            <span
+              className={
+                data.dueStatus === "paid"
+                  ? "text-green-brand"
+                  : data.dueStatus === "overdue"
+                  ? "text-red-brand"
+                  : ""
+              }
+            >
+              {data.dueDisplay}
+            </span>
+            {` • Invoiced ${data.invoiceDateDisplay}`}
+          </LabelText>
+          <div className="h-4" />
+          {data.lineItems.map((item: any) => (
+            <LineItemDisplay
+              key={item.id}
+              description={item.description}
+              unitPrice={item.unitPrice}
+              quantity={item.quantity}
+            />
+          ))}
+          <div className={`${lineItemClassName} font-bold`}>
+            <div>Net Total</div>
+            <div>{currencyFormatter.format(data.totalAmount)}</div>
+          </div>
+          <div className="h-8" />
+          <Deposits data={data} invoiceId={invoiceId as string} />
         </div>
-        <div className="h-8" />
-        <Deposits deposits={data.deposits} invoiceId={invoiceId as string} />
-      </div>
-    );
+      );
+    }
   },
 });
 
@@ -160,31 +155,34 @@ export const newInvoiceRoute = new Route({
     const customers = await fetchCustomers();
     return customers;
   },
-  component: ({ useLoader }) => {
+  component: () => {
     const invoiceFormRef = useRef<any>();
-    const [{ latestSubmission }, submitCreateInvoice] = useAction({
-      key: "createInvoice",
-    });
-
-    const { customers } = useLoader();
     const router = useRouter();
-
     const navigate = useNavigate({
       from: router.state.location.pathname as any,
+    });
+
+    const { customers } = newInvoiceRoute.useLoaderData() as {
+      customers: Customer[];
+    };
+
+    const { mutateAsync } = useMutation({
+      mutationFn: (data: FormData) => {
+        return createInvoice(data);
+      },
     });
 
     const handleSubmit = async (event: any) => {
       event.preventDefault();
       event.stopPropagation();
       const formData = new FormData(event.target as HTMLFormElement);
-
-      const response = await submitCreateInvoice({
-        variables: formData,
-      });
-
+      console.log("form data from handle submit", formData);
+      const res = await mutateAsync(formData);
+      console.log("res", res);
+      router.invalidate();
       navigate({
         to: "/sales/invoices/$invoiceId",
-        params: { invoiceId: response?.data?.id },
+        params: { invoiceId: res?.data?.id as string },
       });
     };
 

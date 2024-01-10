@@ -1,4 +1,5 @@
 import { Customer, CustomerIdFetcherType, SearchCustomerType } from "@/types";
+import { defer, type DeferredPromise } from "@tanstack/react-router";
 import axios from "axios";
 
 export const fetchCustomers = async () => {
@@ -13,7 +14,17 @@ export const fetchCustomers = async () => {
 export const fetchCustomerById = async (customerId: string) => {
   console.log(`Fetching customer by id ${customerId}...`);
   await new Promise((r) => setTimeout(r, 500));
-  return await axios
+  const { customerInfo } = await axios
     .get<CustomerIdFetcherType>(`http://localhost:8080/customers/${customerId}`)
     .then((r) => r.data);
+  const customerDetailsData = axios
+    .get<{ data: CustomerIdFetcherType["customerDetails"] }>(
+      `http://localhost:8080/customerDetails/${customerId}`
+    )
+    .then((r) => r.data);
+  return { customerDetails: defer(customerDetailsData), customerInfo };
+};
+
+type DeferredCustomer = {
+  data: DeferredPromise<CustomerIdFetcherType["customerDetails"]>;
 };

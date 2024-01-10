@@ -1,5 +1,3 @@
-import { loaderClient } from "@/loaders";
-import { ActionContext } from "@tanstack/react-actions";
 import axios from "axios";
 import invariant from "tiny-invariant";
 import {
@@ -11,17 +9,15 @@ import {
   validateLineItemQuantity,
   validateLineItemUnitPrice,
 } from "../../utils";
-import type { LineItemFields } from "@/types";
-import { useNavigate } from "@tanstack/react-router";
+import type { Customer, LineItemFields } from "@/types";
+import { useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/routes";
 
-const actionContext = new ActionContext<{
-  loaderClient: typeof loaderClient;
-}>();
-
-const createInvoice = async (formData: FormData) => {
+export const createInvoice = async (formData: FormData) => {
   await new Promise((r) => setTimeout(r, 500));
 
   const intent = formData.get("intent");
+  console.log("intent", intent);
   switch (intent) {
     case "create": {
       const customerId = formData.get("customerId");
@@ -101,7 +97,7 @@ const createInvoice = async (formData: FormData) => {
   // data to the backend once all the validation has happened.
 };
 
-const createCustomer = async (formData: FormData) => {
+export const createCustomer = async (formData: FormData) => {
   const intent = formData.get("intent");
   switch (intent) {
     case "create": {
@@ -128,7 +124,7 @@ const createCustomer = async (formData: FormData) => {
   }
 };
 
-const createDeposit = async (formData: FormData) => {
+export const createDeposit = async (formData: FormData) => {
   const invoiceId = formData.get("invoiceId");
   if (typeof invoiceId !== "string") {
     throw new Error("This should be impossible.");
@@ -197,63 +193,50 @@ const deleteDeposit = async (formData: FormData) => {
   }
 };
 
-const createInvoiceAction = actionContext.createAction({
-  key: "createInvoice",
-  fn: createInvoice,
-  onEachSuccess: async ({ context: { loaderClient } }) => {
-    await loaderClient.invalidateLoader({ key: "invoices" });
-  },
-});
+//Replace all of these with useMutation hook, maybe. Might just have to do this in the individual component
 
-const createCustomerAction = actionContext.createAction({
-  key: "createCustomer",
-  fn: createCustomer,
-  onEachSuccess: async ({ context: { loaderClient } }) => {
-    await loaderClient.invalidateLoader({ key: "customers" });
-  },
-});
+export const useCreateInvoiceMutation = () => {
+  return useMutation({
+    mutationKey: ["invoices", "create"],
+    mutationFn: createInvoice,
+    onSuccess: () => queryClient.invalidateQueries(),
+  });
+};
 
-const createDepositAction = actionContext.createAction({
-  key: "createDeposit",
-  fn: createDeposit,
-  onEachSuccess: async ({ context: { loaderClient } }) => {
-    await loaderClient.invalidateLoader({ key: "invoice" });
-  },
-});
+export const useAddDepositToInvoiceMutation = (invoiceId: number) => {
+  return useMutation({
+    mutationKey: ["add", "deposit", invoiceId],
+    mutationFn: createDeposit,
+    onSuccess: () => queryClient.invalidateQueries(),
+    gcTime: 1000 * 10,
+  });
+};
 
-const deleteDepositAction = actionContext.createAction({
-  key: "deleteDeposit",
-  fn: deleteDeposit,
-});
-
-// use the code below in the component for the formdata
-
-// const [{ latestSubmission }, submitCreateInvoice] = useAction({
-//     key: 'createInvoice',
-//   })
-
-// const updateInvoiceAction = actionContext.createAction({
-//   key: "updateInvoice",
-//   fn: patchInvoice,
-//   onEachSuccess: async ({ submission, context: { loaderClient } }) => {
+// const createInvoiceAction = actionContext.createAction({
+//   key: "createInvoice",
+//   fn: createInvoice,
+//   onEachSuccess: async ({ context: { loaderClient } }) => {
 //     await loaderClient.invalidateLoader({ key: "invoices" });
-//     await loaderClient.invalidateInstance({
-//       key: "invoice",
-//       variables: submission.variables.id,
-//     });
 //   },
 // });
 
-export const actionClient = actionContext.createClient({
-  context: {
-    loaderClient,
-  },
-  actions: [
-    createInvoiceAction,
-    createCustomerAction,
-    createDepositAction,
-    deleteDepositAction,
-  ],
-});
+// const createCustomerAction = actionContext.createAction({
+//   key: "createCustomer",
+//   fn: createCustomer,
+//   onEachSuccess: async ({ context: { loaderClient } }) => {
+//     await loaderClient.invalidateLoader({ key: "customers" });
+//   },
+// });
 
-//   actions: [createInvoiceAction, updateInvoiceAction],
+// const createDepositAction = actionContext.createAction({
+//   key: "createDeposit",
+//   fn: createDeposit,
+//   onEachSuccess: async ({ context: { loaderClient } }) => {
+//     await loaderClient.invalidateLoader({ key: "invoice" });
+//   },
+// });
+
+// const deleteDepositAction = actionContext.createAction({
+//   key: "deleteDeposit",
+//   fn: deleteDeposit,
+// });

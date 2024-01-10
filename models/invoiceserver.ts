@@ -4,6 +4,26 @@ import type { Invoice, LineItem } from "@prisma/client";
 export type { Invoice, LineItem };
 export type DueStatus = "paid" | "overpaid" | "overdue" | "due";
 
+export type InvoiceDetails = {
+  customerName: string;
+  customerId: string;
+  totalAmount: number;
+  dueStatus: DueStatus;
+  dueDisplay: string;
+  invoiceDateDisplay: string;
+  lineItems: {
+    id: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+  }[];
+  deposits: {
+    id: string;
+    amount: number;
+    depositDateFormatted: string;
+  }[];
+};
+
 const getDaysToDueDate = (date: Date) =>
   Math.ceil(
     (date.getTime() - asUTC(new Date()).getTime()) / (1000 * 60 * 60 * 24)

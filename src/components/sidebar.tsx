@@ -1,50 +1,23 @@
-import { Link, Outlet, useMatches, useParams } from "@tanstack/react-router";
-import type {
-  ParseRoute,
-  RouteIds,
-  RegisteredRouter,
-} from "@tanstack/react-router";
-// import clsx from "clsx";
-// import { useSpinDelay } from "spin-delay";
-import {
-  FullFakebooksLogo,
-  //   LogoutIcon,
-  //   SpinnerIcon,
-  UpRightArrowIcon,
-} from "./icons";
+import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+
+import { FullFakebooksLogo, UpRightArrowIcon } from "./icons";
 import { SignInButton, SignOutButton, useUser } from "@clerk/clerk-react";
-import { useLoaderInstance } from "@tanstack/react-loaders";
 
-export default function SideBar({
-  invoiceListItems,
-}: {
-  invoiceListItems: any;
-}) {
+export default function SideBar() {
   const { isSignedIn } = useUser();
+  const router = useRouterState();
+  const pathname = router.location.pathname;
 
-  const routes = useMatches();
-  const params = useParams({ strict: false });
-  console.log("params", params);
-  const isInvoiceIdRoute = routes.some(
-    (r) => r.routeId === "/sales/invoices/$invoiceId"
-  );
+  // currently when I redirect the user after sign in I have to click around before the auth context updates
+  // and realizes that I can see protected routes. I can just redirect to the homepage but that isn't a nice user experience
 
-  const invoicesToRender =
-    isInvoiceIdRoute && params.invoiceId
-      ? invoiceListItems.filter(
-          (invoice: any) => invoice.id === params.invoiceId
-        )
-      : null;
-
-  console.log("isInvoiceIdRoute", isInvoiceIdRoute);
-  console.log("routes", routes);
   return (
     <div className="relative flex h-screen rounded-lg bg-white text-gray-600">
       <div className="border-r border-gray-100 bg-gray-50">
         <div className="p-4">
           <div className="flex flex-wrap items-center gap-1">
             <Link
-              to="."
+              to="/"
               preload="intent"
               className="my-1 py-1 px-2 pr-16 text-[length:14px]"
               activeProps={{
@@ -53,7 +26,6 @@ export default function SideBar({
             >
               <FullFakebooksLogo size="sm" position="left" />
             </Link>
-            {/* <Spinner visible={showSpinner} /> */}
           </div>
           <div className="h-7" />
           <div className="flex flex-col font-bold text-gray-800">
@@ -67,7 +39,6 @@ export default function SideBar({
             >
               Dashboard
             </Link>
-            {/* <NavItem to="accounts">Accounts</NavItem>*/}
             <Link
               to="/sales"
               preload="intent"
@@ -78,35 +49,21 @@ export default function SideBar({
             >
               Sales
             </Link>
-            {/*<NavItem to="expenses">Expenses</NavItem>
-            <NavItem to="reports">Reports</NavItem> */}
-            {isInvoiceIdRoute && (
-              <>
-                {invoicesToRender.map((invoice: any) => (
-                  <Link
-                    key={invoice.id}
-                    to="/sales/invoices/$invoiceId"
-                    params={{ invoiceId: invoice.id }}
-                    preload="intent"
-                    className="my-1 py-1 px-2 pr-16 text-[length:14px]"
-                    activeProps={{
-                      className: "rounded-md bg-gray-100",
-                    }}
-                  >
-                    {invoice.name}
-                  </Link>
-                ))}
-              </>
-            )}
+
             <a
               href="https://github.com/FrontendMasters/advanced-remix"
               className="my-1 flex gap-1 py-1 px-2 pr-16 text-[length:14px]"
             >
               GitHub <UpRightArrowIcon />
             </a>
-            {/* if the this is an invoice route map over list of invoicelineitems and display invoice ids */}
 
-            {isSignedIn ? <SignOutButton /> : <SignInButton />}
+            {isSignedIn ? (
+              <SignOutButton
+                signOutCallback={() => window.location.replace("/")}
+              />
+            ) : (
+              <SignInButton afterSignInUrl={pathname} />
+            )}
           </div>
         </div>
       </div>

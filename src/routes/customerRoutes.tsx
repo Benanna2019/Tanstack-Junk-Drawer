@@ -13,26 +13,27 @@ import {
   Outlet,
   useNavigate,
   useRouter,
+  Route,
+  redirect,
 } from "@tanstack/react-router";
-import { Route } from "@tanstack/router-core";
 import { salesRoute } from "./salesRoutes";
-import { NotFoundError, customerQuerySchema } from "@/types";
+import { Customer, NotFoundError, customerQuerySchema } from "@/types";
 import { Suspense } from "react";
 import { currencyFormatter } from "../../utils";
-import { rootRoute } from "./rootRoute";
-import { invoicesRoute } from "./invoiceRoutes";
-import { useAction } from "@tanstack/react-actions";
+import { useMutation } from "@tanstack/react-query";
+import { createCustomer } from "@/actions/index";
 
 export const customersRoute = new Route({
   getParentRoute: () => salesRoute,
   path: "customers",
-  loader: fetchCustomers,
-  component: ({ useLoader }) => {
-    const { customers } = useLoader();
+  loader: async () => await fetchCustomers(),
+  component: () => {
+    const { customers } = customersRoute.useLoaderData() as {
+      customers: Customer[];
+    };
     return (
       <div className="flex overflow-hidden rounded-lg border border-gray-100">
         <div className="w-1/2 border-r border-gray-100">
-          {/* This is where I will add the add customer modal */}
           <Link
             to="/sales/customers/new"
             preload="intent"
@@ -49,7 +50,7 @@ export const customersRoute = new Route({
                 key={customer.id}
                 to="/sales/customers/$customerId"
                 params={{ customerId: customer.id }}
-                state={{ customer }}
+                // state={{ customer }}
                 preload="intent"
                 activeProps={{
                   className: "bg-gray-100",
@@ -90,66 +91,74 @@ export const customerIdRoute = new Route({
   getParentRoute: () => customersRoute,
   path: "$customerId",
   loader: async ({ params: { customerId } }) => fetchCustomerById(customerId),
+  beforeLoad: ({ context: { authentication } }) => {
+    const isSignedIn = authentication?.isSignedIn;
+    if (!isSignedIn) {
+      throw Error("you must be signed in to create a customer");
+    }
+    // you could add sentry error logging here
+  },
   errorComponent: ({ error }) => {
     if (error instanceof NotFoundError) {
       return <div>{error.message}</div>;
     }
-
     return <ErrorComponent error={error} />;
   },
-  component: ({ useLoader }) => {
-    const data = useLoader();
-    console.log("customer id data", data);
+  component: () => {
+    const { customerInfo, customerDetails } = customerIdRoute.useLoaderData();
     return (
       <div className="relative p-10">
         <div className="text-[length:14px] font-bold leading-6">
-          {data.customerInfo.email}
+          {customerInfo.email}
         </div>
         <div className="text-[length:32px] font-bold leading-[40px]">
-          {data.customerInfo.name}
+          {customerInfo.name}
         </div>
         <div className="h-4" />
         <div className="text-m-h3 font-bold leading-8">Invoices</div>
         <div className="h-4" />
-        {/* <Suspense fallback={<InvoiceDetailsFallback />}>
-          <Await promise={data.customerDetails}> */}
-        {/* {(customerDetails) => ( */}
-        <table className="w-full">
-          <tbody>
-            {data.customerDetails?.invoiceDetails?.map((details) => (
-              <tr key={details.id} className={lineItemClassName}>
-                <td>
-                  <Link
-                    className="text-blue-600 underline"
-                    to="/sales/invoices/$invoiceId"
-                    params={{ invoiceId: details.id }}
-                  >
-                    {details.number}
-                  </Link>
-                </td>
-                <td
-                  className={
-                    "text-center uppercase" +
-                    " " +
-                    (details.dueStatus === "paid"
-                      ? "text-green-brand"
-                      : details.dueStatus === "overdue"
-                      ? "text-red-brand"
-                      : "")
-                  }
-                >
-                  {details.dueStatusDisplay}
-                </td>
-                <td className="text-right">
-                  {currencyFormatter.format(details.totalAmount)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {/* )}
+        <Suspense fallback={<InvoiceDetailsFallback />}>
+          <Await promise={customerDetails}>
+            {({ data }) => {
+              console.log("customer details", data);
+              return (
+                <table className="w-full">
+                  <tbody>
+                    {data?.invoiceDetails?.map((details: any) => (
+                      <tr key={details.id} className={lineItemClassName}>
+                        <td>
+                          <Link
+                            className="text-blue-600 underline"
+                            to="/sales/invoices/$invoiceId"
+                            params={{ invoiceId: details.id }}
+                          >
+                            {details.number}
+                          </Link>
+                        </td>
+                        <td
+                          className={
+                            "text-center uppercase" +
+                            " " +
+                            (details.dueStatus === "paid"
+                              ? "text-green-brand"
+                              : details.dueStatus === "overdue"
+                              ? "text-red-brand"
+                              : "")
+                          }
+                        >
+                          {details.dueStatusDisplay}
+                        </td>
+                        <td className="text-right">
+                          {currencyFormatter.format(details.totalAmount)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              );
+            }}
           </Await>
-        </Suspense> */}
+        </Suspense>
       </div>
     );
   },
@@ -159,28 +168,27 @@ export const newCustomerRoute = new Route({
   getParentRoute: () => customersRoute,
   path: "new",
   component: () => {
-    const [{ latestSubmission }, submitCreateCustomer] = useAction({
-      key: "createCustomer",
-    });
     const router = useRouter();
-
-    console.log("latestsubmission", latestSubmission);
     const navigate = useNavigate({
       from: router.state.location.pathname as any,
+    });
+
+    const { mutateAsync } = useMutation({
+      mutationFn: (data: FormData) => {
+        return createCustomer(data);
+      },
     });
 
     const handleSubmit = async (event: any) => {
       event.preventDefault();
       event.stopPropagation();
       const formData = new FormData(event.target as HTMLFormElement);
-
-      const response = await submitCreateCustomer({
-        variables: formData,
-      });
-
+      const res = await mutateAsync(formData);
+      console.log("res", res);
+      router.invalidate();
       navigate({
         to: "/sales/customers/$customerId",
-        params: { customerId: response?.data?.id },
+        params: { customerId: res?.data?.id as string },
       });
     };
 

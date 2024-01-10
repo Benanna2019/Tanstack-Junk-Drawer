@@ -18,8 +18,7 @@ import {
   customersRoute,
   newCustomerRoute,
 } from "./customerRoutes";
-import { loaderClient } from "@/loaders";
-import { actionClient } from "../actions";
+import { QueryClient } from "@tanstack/react-query";
 
 const routeTree = rootRoute.addChildren([
   postsRoute.addChildren([postRoute, postsIndexRoute]),
@@ -33,12 +32,13 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
 ]);
 
-// Set up a Router instance
+export const queryClient = new QueryClient();
+
 export const router = new Router({
   routeTree,
   defaultPreload: "intent",
   context: {
-    loaderClient,
-    actionClient,
+    queryClient,
+    authentication: undefined,
   },
 });
