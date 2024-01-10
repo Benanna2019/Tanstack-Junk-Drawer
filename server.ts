@@ -1,4 +1,4 @@
-import express, { request } from "express";
+import express from "express";
 import Express from "express";
 import cors from "cors";
 import invariant from "tiny-invariant";
@@ -302,3 +302,5 @@ app.post(
 app.listen(port, () => {
   console.log(`Listening on port ${port}...`);
 });
+
+export const viteNodeApp = app;

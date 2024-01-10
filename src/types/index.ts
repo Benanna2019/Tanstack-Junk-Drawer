@@ -1,4 +1,3 @@
-import { DeferredPromise } from "@tanstack/router-core";
 import * as z from "zod";
 
 export class NotFoundError extends Error {}
